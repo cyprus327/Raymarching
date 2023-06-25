@@ -2,6 +2,7 @@
 
 uniform float uTime;
 uniform vec3 uCamPos;
+uniform vec3 uObjPos;
 
 in vec2 iResolution;
 
@@ -16,7 +17,7 @@ out vec4 fragColor;
 
 const vec3 FOG_COLOR = vec3(0.30, 0.36, 0.60);
 const vec3 CAM_TARGET = vec3(7.0, -3.0, 8.0);
-const float MAX_DIST = FOG_START_DIST;
+const float MAX_DIST = 1.1 * FOG_START_DIST;
 const int MAX_ITER = 128;
 
 float sdfSphere(vec3 p, float r) {
@@ -32,8 +33,8 @@ float sdfTorus(vec3 p, vec2 radii) {
     return length(vec2(length(p.xz)-radii.x, p.y))-radii.y;
 }
 
-float sdfPlane(vec3 p, vec4 n) {
-    return dot(p, n.xyz)+n.w;
+float sdfPlane(vec3 p, float h) {
+    return dot(p, vec3(0.0, 1.0, 0.0))+h;
 }
 
 float opS(float d1, float d2) {
@@ -50,7 +51,7 @@ float smin(float a, float b, float k) {
 }
 
 vec4 opBlend(vec4 d1, vec4 d2) {
-    float k = 2.0;
+    const float k = 2.0;
     float d = smin(d1.w, d2.w, k);
     vec3 m = mix(d1.rgb, d2.rgb, clamp(d1.w - d, 0.0, 1.0));
     return vec4(m, d);
@@ -58,17 +59,22 @@ vec4 opBlend(vec4 d1, vec4 d2) {
 
 vec4 sdfTower(vec3 p, vec3 s) {
     const float W = 0.2;
+
+    // make the outer walls by removing the inside of a box
     float outerWalls = opS(sdfBox(p, s), sdfBox(p, vec3(s.x-W, s.y+W, s.z-W)));
-    
-    vec4 res = vec4(vec3(0.9, 0.2, 0.2), opS(outerWalls, sdfBox(vec3(p.x-0.5*s.x, p.y, p.z), vec3(0.5, s.y+W, W*2.1))));
+
+    // make a door hole by removing a section for the door
+    outerWalls = opS(outerWalls, sdfBox(p-vec3(0.0, 0.0, 0.5*W-s.z), vec3(0.5, s.y+0.1, 0.5*W*1.05)));
+
+    vec4 res = vec4(vec3(0.9, 0.2, 0.2), outerWalls);
 
     return res;
-} 
+}
 
 vec4 sdfScene(vec3 pos) {
     float st = sin(uTime);
 
-    vec4 res = vec4(vec3(-0.5), sdfPlane(pos, vec4(0.0, 1.4, 0.0, 10)));
+    vec4 res = vec4(vec3(-0.5), sdfPlane(pos, 10));
     
     vec3 shapePos = vec3(4.0, -2.0, 8.0);
     vec4 shapeA = vec4(vec3(0.9, 0.0, 0.1), sdfBox(pos-shapePos, vec3(1.5)));
@@ -79,11 +85,13 @@ vec4 sdfScene(vec3 pos) {
     
     shapePos.x += 6.0;
     shapePos.z -= 3.0;
-    //res = opU(res, vec4(vec3(1.0), opS(sdfBox(pos-shapePos, vec3(1.0)), sdfSphere(pos-shapePos, st*0.28+1.3))));
+    res = opU(res, vec4(vec3(1.0), opS(sdfBox(pos-shapePos, vec3(1.0)), sdfSphere(pos-shapePos, st*0.28+1.3))));
     
-    res = opU(res, sdfTower(pos-shapePos, vec3(1.0, 0.4, 1.5)));
+    shapePos.y += 4.0;
+    shapePos.z += 4.0;
+    res = opU(res, sdfTower(pos-shapePos, vec3(1.0, 2.0, 3.0)));
 
-    res = opU(res, vec4(vec3(0.1, 0.1, 0.1), sdfSphere(pos-CAM_TARGET, 0.1)));
+    res = opU(res, vec4(vec3(0.1, 0.1, 0.1), sdfSphere(pos-uObjPos, 0.1)));
     return res;
 }
 
@@ -122,8 +130,8 @@ hitInfo castRay(vec3 rayOrigin, vec3 rayDir) {
             break;
         }
         
-        t += res.w;
         info.mat = res.rgb;
+        t += res.w;
     }
     
     info.minDist = t;
@@ -167,7 +175,7 @@ vec3 render(vec3 rayOrigin, vec3 rayDir) {
             //col = normal*0.5+0.5;
         } else {
             float grid = checkersGradBox(pos.xz*0.2) * 0.03 + 0.1;
-            col = vec3(grid, grid, grid);
+            col = vec3(grid / 5.0, grid, grid / 7.0);
             
 #if ENABLE_SHADOWS
             float shadow = 0.0;
@@ -181,7 +189,7 @@ vec3 render(vec3 rayOrigin, vec3 rayDir) {
 #endif
         }
 
-        col = applyFog(col, pos.z);
+        col = applyFog(col, length(rayDir) * info.minDist);
     }
     
     return col;
@@ -192,13 +200,13 @@ vec3 getCamRayDir(vec2 uv, vec3 camPos, vec3 camTarget) {
 	vec3 camRight = normalize(cross(vec3(0.0, 1.0, 0.0), camForward));
 	vec3 camUp = normalize(cross(camForward, camRight));
 
-    float persp = 1.8;
+    float persp = 1.0;
 	return normalize(uv.x * camRight + uv.y * camUp + camForward * persp);
 }
 
 vec4 getSceneCol(vec2 fragCoord) {
     vec2 uv = (-iResolution.xy + 2.0 * fragCoord) / iResolution.y;
-    vec3 rayDir = getCamRayDir(uv, uCamPos, CAM_TARGET);
+    vec3 rayDir = getCamRayDir(uv, uCamPos, uObjPos);
     
     vec3 col = render(uCamPos, rayDir);
     
@@ -224,6 +232,11 @@ void main() {
     
 #if ENABLE_POST_PROCESSING
     vec2 screenCoord = gl_FragCoord.xy / iResolution.xy;
+
+    if (screenCoord == vec2(0.5)) {
+        fragColor = vec4(0.0, 1.0, 0.0, 1.0);
+        return;
+    }
 
     // vignette
     float radius = 0.8;

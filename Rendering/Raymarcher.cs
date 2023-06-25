@@ -52,6 +52,7 @@ internal sealed class Raymarcher : IDisposable {
 
         _timeUniformLocation = GL.GetUniformLocation(Handle, "uTime");
         _camPosUniformLocation = GL.GetUniformLocation(Handle, "uCamPos");
+        _objPosUniformLocation = GL.GetUniformLocation(Handle, "uObjPos");
     }
 
     public int Handle { get; init; }
@@ -62,32 +63,52 @@ internal sealed class Raymarcher : IDisposable {
     private readonly int _camPosUniformLocation;
     private Vector3 camPos = new(0f, 0f, -7f);
 
+    private readonly int _objPosUniformLocation;
+    private Vector3 objPos = new(1f);
+
     private bool disposed = false;
 
     public void HandleInput(float deltaTime, KeyboardState keyboardState, MouseState mouseState) {
         elapsedTime += deltaTime;
 
-        const float SPEED = 4f;
+        // camera movement
+        float speed = keyboardState.IsKeyDown(Keys.LeftShift) ? 20f : 5f;
         if (keyboardState.IsKeyDown(Keys.Space)) {
-            camPos.Y += deltaTime * SPEED;
+            camPos.Y += deltaTime * speed;
         } else if (keyboardState.IsKeyDown(Keys.LeftControl)) {
-            camPos.Y -= deltaTime * SPEED;
+            camPos.Y -= deltaTime * speed;
         } 
         if (keyboardState.IsKeyDown(Keys.W)) {
-            camPos.Z += deltaTime * SPEED;
+            camPos.Z += deltaTime * speed;
         } else if (keyboardState.IsKeyDown(Keys.S)) {
-            camPos.Z -= deltaTime * SPEED;
+            camPos.Z -= deltaTime * speed;
         } 
         if (keyboardState.IsKeyDown(Keys.A)) {
-            camPos.X -= deltaTime * SPEED;
+            camPos.X -= deltaTime * speed;
         } else if (keyboardState.IsKeyDown(Keys.D)) {
-            camPos.X += deltaTime * SPEED;
+            camPos.X += deltaTime * speed;
+        }
+
+        // object uniform movement
+        if (keyboardState.IsKeyDown(Keys.R)) {
+            objPos.Y -= deltaTime;
+        } else if (keyboardState.IsKeyDown(Keys.Y)) {
+            objPos.Y += deltaTime;
+        } else if (keyboardState.IsKeyDown(Keys.T)) {
+            objPos.Z += deltaTime;
+        } else if (keyboardState.IsKeyDown(Keys.F)) {
+            objPos.X -= deltaTime;
+        } else if (keyboardState.IsKeyDown(Keys.G)) {
+            objPos.Z -= deltaTime;
+        } else if (keyboardState.IsKeyDown(Keys.H)) {
+            objPos.X += deltaTime;
         }
 
         GetMouseDelta(mouseState, out float dx, out float dy);
 
         GL.Uniform1(_timeUniformLocation, elapsedTime);
         GL.Uniform3(_camPosUniformLocation, camPos);
+        GL.Uniform3(_objPosUniformLocation, objPos);
     }
 
     private void GetMouseDelta(MouseState state, out float dx, out float dy) {
