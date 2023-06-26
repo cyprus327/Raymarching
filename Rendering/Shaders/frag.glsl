@@ -64,7 +64,7 @@ vec4 sdfTower(vec3 p, vec3 s) {
     float outerWalls = opS(sdfBox(p, s), sdfBox(p, vec3(s.x-W, s.y+W, s.z-W)));
 
     // make a door hole by removing a section for the door
-    outerWalls = opS(outerWalls, sdfBox(p-vec3(0.0, 0.0, 0.5*W-s.z), vec3(0.5, s.y+0.1, 0.5*W*1.05)));
+    outerWalls = opS(outerWalls, sdfBox(p-vec3(0.0, 0.0, 0.5*W-s.z), vec3(0.5, s.y+0.1, 0.5*W*2.0)));
 
     vec4 res = vec4(vec3(0.9, 0.2, 0.2), outerWalls);
 
