@@ -12,8 +12,7 @@ internal sealed class Renderer : GameWindow {
             Title = title,
             StartVisible = false,
             StartFocused = true,
-            MaximumSize = (width, height),
-            MinimumSize = (width, height)
+            MinimumSize = (400, 225)
         }) {
         this.CenterWindow();
     }
@@ -24,11 +23,7 @@ internal sealed class Renderer : GameWindow {
 
     private Raymarcher raymarcher;
 
-    protected override void OnLoad() {
-        base.OnLoad();
-
-        this.IsVisible = true;
-
+    private void InitBuffers() {
         float[] vertices = {
             0f, this.ClientSize.Y,                  // top left
             this.ClientSize.X, this.ClientSize.Y,   // top right
@@ -37,7 +32,7 @@ internal sealed class Renderer : GameWindow {
         };
 
         // clockwise rotation
-        int[] indices = { 
+        int[] indices = {
             0, 1, 2,
             0, 2, 3
         };
@@ -60,6 +55,14 @@ internal sealed class Renderer : GameWindow {
         GL.EnableVertexAttribArray(0);
 
         GL.BindVertexArray(0);
+    }
+
+    protected override void OnLoad() {
+        base.OnLoad();
+
+        this.IsVisible = true;
+
+        InitBuffers();
 
         raymarcher = new Raymarcher(this.ClientSize.X, this.ClientSize.Y);
     }
@@ -83,6 +86,10 @@ internal sealed class Renderer : GameWindow {
         base.OnResize(e);
 
         GL.Viewport(0, 0, e.Width, e.Height);
+
+        InitBuffers();
+
+        raymarcher.OnResize(e);
     }
 
     protected override void OnRenderFrame(FrameEventArgs args) {
@@ -101,7 +108,8 @@ internal sealed class Renderer : GameWindow {
     protected override void OnUpdateFrame(FrameEventArgs args) {
         base.OnUpdateFrame(args);
 
-        raymarcher.HandleInput((float)args.Time, this.KeyboardState, this.MouseState);
+        raymarcher.HandleInput((float)args.Time, this.KeyboardState, this.MouseState, out CursorState cursorState);
+        this.CursorState = cursorState;
 
         string fps = $"FPS: {1 / args.Time:F0}";
         this.Title = $"{fps}";
