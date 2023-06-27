@@ -68,11 +68,16 @@ internal sealed class Raymarcher : IDisposable {
             new Cube() { C = new Vec3(10f, -2f, 5f), S = new Vec3(1f, 1f, 1f) }
         };
 
-        SendToBuffer(_spheres.ToArray(), "SpheresBlock", 0, Handle);
-        SendToBuffer(_cubes.ToArray(), "CubesBlock", 1, Handle);
+        _spheresUboHandle = GL.GenBuffer();
+        SendToBuffer(_spheres.ToArray(), "SpheresBlock", 0, _spheresUboHandle);
+
+        _cubesUboHandle = GL.GenBuffer();
+        SendToBuffer(_cubes.ToArray(), "CubesBlock", 1, _cubesUboHandle);
     }
 
-    public int Handle { get; init; }
+    public readonly int Handle;
+    private readonly int _spheresUboHandle;
+    private readonly int _cubesUboHandle;
 
     private readonly List<Sphere> _spheres;
     private readonly List<Cube> _cubes;
@@ -153,14 +158,29 @@ internal sealed class Raymarcher : IDisposable {
         #endregion movement
 
         #region interaction
+        bool spheresChanged = false, cubesChanged = false;
         if (keyboardState.IsKeyReleased(Keys.Z)) {
             _spheres.Add(new Sphere() { C = new Vec3(objPos.X, objPos.Y, objPos.Z), R = 1f });
-            SendToBuffer(_spheres.ToArray(), "SpheresBlock", 0, Handle);
+            spheresChanged = true;
         }
         if (keyboardState.IsKeyReleased(Keys.X)) {
             _cubes.Add(new Cube() { C = new Vec3(objPos.X, objPos.Y, objPos.Z), S = new Vec3(1f, 1f, 1f) });
-            SendToBuffer(_cubes.ToArray(), "CubesBlock", 1, Handle);
+            cubesChanged = true;
         }
+
+        if (keyboardState.IsKeyDown(Keys.Space)) {
+            //bool objSelected = false;
+            for (int i = 0; i < _spheres.Count; i++) {
+                if (Vector3.DistanceSquared(objPos, new Vector3(_spheres[i].C.X, _spheres[i].C.Y, _spheres[i].C.Z)) <= _spheres[i].R * _spheres[i].R) {
+                    _spheres[i] = new Sphere() { C = new Vec3(objPos.X, objPos.Y, objPos.Z), R  = _spheres[i].R };
+                    spheresChanged = true;
+                    break;
+                }
+            }
+        }
+
+        if (spheresChanged) SendToBuffer(_spheres.ToArray(), "SpheresBlock", 0, _spheresUboHandle);
+        if (cubesChanged) SendToBuffer(_cubes.ToArray(), "CubesBlock", 1, _cubesUboHandle);
         #endregion interaction
 
         GL.Uniform2(_viewportUniformLocation, viewport);
@@ -169,15 +189,14 @@ internal sealed class Raymarcher : IDisposable {
         GL.Uniform3(_objPosUniformLocation, objPos);
     }
 
-    private static void SendToBuffer<T>(T[] arr, string blockName, int bindingInd, int handle) where T : struct {
-        int uboHandle = GL.GenBuffer();
+    private void SendToBuffer<T>(T[] arr, string blockName, int bindingInd, int uboHandle) where T : struct {
         GL.BindBuffer(BufferTarget.UniformBuffer, uboHandle);
         GL.BufferData(BufferTarget.UniformBuffer, arr.Length * Marshal.SizeOf<T>(), arr, BufferUsageHint.StaticDraw);
 
         GL.BindBufferBase(BufferRangeTarget.UniformBuffer, bindingInd, uboHandle);
 
-        int blockIndex = GL.GetUniformBlockIndex(handle, blockName);
-        GL.UniformBlockBinding(handle, blockIndex, bindingInd);
+        int blockIndex = GL.GetUniformBlockIndex(Handle, blockName);
+        GL.UniformBlockBinding(Handle, blockIndex, bindingInd);
     }
 
     ~Raymarcher() {
