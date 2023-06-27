@@ -152,6 +152,17 @@ internal sealed class Raymarcher : IDisposable {
         camPos.Y = objPos.Y + 4f;
         #endregion movement
 
+        #region interaction
+        if (keyboardState.IsKeyReleased(Keys.Z)) {
+            _spheres.Add(new Sphere() { C = new Vec3(objPos.X, objPos.Y, objPos.Z), R = 1f });
+            SendToBuffer(_spheres.ToArray(), "SpheresBlock", 0, Handle);
+        }
+        if (keyboardState.IsKeyReleased(Keys.X)) {
+            _cubes.Add(new Cube() { C = new Vec3(objPos.X, objPos.Y, objPos.Z), S = new Vec3(1f, 1f, 1f) });
+            SendToBuffer(_cubes.ToArray(), "CubesBlock", 1, Handle);
+        }
+        #endregion interaction
+
         GL.Uniform2(_viewportUniformLocation, viewport);
         GL.Uniform1(_timeUniformLocation, elapsedTime);
         GL.Uniform3(_camPosUniformLocation, camPos);

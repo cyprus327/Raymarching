@@ -11,7 +11,7 @@ struct sphere {
     float r;
 };
 layout(std140, binding = 0) uniform SpheresBlock {
-    sphere iSpheres[2];
+    sphere iSpheres[];
 };
 
 struct cube {
@@ -19,7 +19,7 @@ struct cube {
     vec3 s;
 };
 layout(std140, binding = 1) uniform CubesBlock {
-    cube iCubes[2];
+    cube iCubes[];
 };
 
 out vec4 fragColor;
@@ -88,10 +88,9 @@ vec4 sdfTower(vec3 p, vec3 s) {
 }
 
 vec4 sdfScene(vec3 pos) {
-    float st = sin(uTime);
-
     vec4 res = vec4(vec3(-0.5), sdfPlane(pos, 10));
     
+    float st = sin(uTime);
     vec4 shapeA = vec4(vec3(0.9, 0.0, 0.1), sdfBox(pos-iCubes[0].c, iCubes[0].s));
     vec4 shapeB = vec4(vec3(0.1, 0.1, 0.9), sdfSphere(pos-iSpheres[0].c, iSpheres[0].r));
     res = opU(res, mix(shapeA, shapeB, clamp(st*1.5, -1.0, 1.0)*0.5+0.5));
@@ -101,6 +100,29 @@ vec4 sdfScene(vec3 pos) {
     res = opU(res, vec4(vec3(1.0), opS(sdfBox(pos-iCubes[1].c, iCubes[1].s), sdfSphere(pos-iSpheres[1].c, st*0.28+1.3))));
     
     res = opU(res, sdfTower(pos-vec3(-8.0, -2.0, 4.0), vec3(1.0, 2.0, 3.0)));
+
+    // this doesn't work for some reason
+    // for (int i = 0; i < iSpheres.length; i++) {
+    //     res = opU(res, vec4(vec3(1.0), sdfSphere(pos-iSpheres[i].c, iSpheres[i].r)));
+    // }
+
+    const sphere emptySphere = sphere(vec3(0.0), 0.0);
+    if (iSpheres[2] != emptySphere) res = opBlend(res, vec4(vec3(1.0), sdfSphere(pos-iSpheres[2].c, iSpheres[2].r)));
+    if (iSpheres[3] != emptySphere) res = opBlend(res, vec4(vec3(1.0), sdfSphere(pos-iSpheres[3].c, iSpheres[3].r)));
+    if (iSpheres[4] != emptySphere) res = opBlend(res, vec4(vec3(1.0), sdfSphere(pos-iSpheres[4].c, iSpheres[4].r)));
+    if (iSpheres[5] != emptySphere) res = opBlend(res, vec4(vec3(1.0), sdfSphere(pos-iSpheres[5].c, iSpheres[5].r)));
+    if (iSpheres[6] != emptySphere) res = opBlend(res, vec4(vec3(1.0), sdfSphere(pos-iSpheres[6].c, iSpheres[6].r)));
+    if (iSpheres[7] != emptySphere) res = opBlend(res, vec4(vec3(1.0), sdfSphere(pos-iSpheres[7].c, iSpheres[7].r)));
+    if (iSpheres[8] != emptySphere) res = opBlend(res, vec4(vec3(1.0), sdfSphere(pos-iSpheres[8].c, iSpheres[8].r)));
+
+    const cube emptyCube = cube(vec3(0.0), vec3(0.0));
+    if (iCubes[2] != emptyCube) res = opBlend(res, vec4(vec3(1.0), sdfBox(pos-iCubes[2].c, iCubes[2].s)));
+    if (iCubes[3] != emptyCube) res = opBlend(res, vec4(vec3(1.0), sdfBox(pos-iCubes[3].c, iCubes[3].s)));
+    if (iCubes[4] != emptyCube) res = opBlend(res, vec4(vec3(1.0), sdfBox(pos-iCubes[4].c, iCubes[4].s)));
+    if (iCubes[5] != emptyCube) res = opBlend(res, vec4(vec3(1.0), sdfBox(pos-iCubes[5].c, iCubes[5].s)));
+    if (iCubes[6] != emptyCube) res = opBlend(res, vec4(vec3(1.0), sdfBox(pos-iCubes[6].c, iCubes[6].s)));
+    if (iCubes[7] != emptyCube) res = opBlend(res, vec4(vec3(1.0), sdfBox(pos-iCubes[7].c, iCubes[7].s)));
+    if (iCubes[8] != emptyCube) res = opBlend(res, vec4(vec3(1.0), sdfBox(pos-iCubes[8].c, iCubes[8].s)));
 
     res = opU(res, vec4(vec3(0.1, 0.1, 0.1), sdfSphere(pos-uObjPos, 0.1)));
     return res;
