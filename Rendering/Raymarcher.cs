@@ -3,6 +3,7 @@ using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
+using System.Runtime.InteropServices;
 
 namespace Raymarching.Rendering;
 
@@ -56,9 +57,25 @@ internal sealed class Raymarcher : IDisposable {
         _timeUniformLocation = GL.GetUniformLocation(Handle, "uTime");
         _camPosUniformLocation = GL.GetUniformLocation(Handle, "uCamPos");
         _objPosUniformLocation = GL.GetUniformLocation(Handle, "uObjPos");
+
+        _spheres = new List<Sphere>() {
+            new Sphere() { C = new Vec3(4f, -2f, 8f), R = 1.5f },
+            new Sphere() { C = new Vec3(10f, -2f, 5f), R = 1f },
+        };
+
+        _cubes = new List<Cube>() {
+            new Cube() { C = new Vec3(4f, -2f, 8f), S = new Vec3(1.5f, 1.5f, 1.5f) },
+            new Cube() { C = new Vec3(10f, -2f, 5f), S = new Vec3(1f, 1f, 1f) }
+        };
+
+        SendToBuffer(_spheres.ToArray(), "SpheresBlock", 0, Handle);
+        SendToBuffer(_cubes.ToArray(), "CubesBlock", 1, Handle);
     }
 
     public int Handle { get; init; }
+
+    private readonly List<Sphere> _spheres;
+    private readonly List<Cube> _cubes;
 
     private readonly int _viewportUniformLocation;
     private Vector2 viewport;
@@ -81,6 +98,7 @@ internal sealed class Raymarcher : IDisposable {
     public void HandleInput(float deltaTime, KeyboardState keyboardState, MouseState mouseState, out CursorState cursorState) {
         elapsedTime += deltaTime;
 
+        #region movement
         float dx = 0f, dy = 0f;
         if (mouseState.IsButtonDown(MouseButton.Button2)) {
             dx = mouseState.Delta.X;
@@ -132,11 +150,23 @@ internal sealed class Raymarcher : IDisposable {
         //    camPos.Y = camPos.Y < objPos.Y ? objPos.Y - MAX_HEIGHT : objPos.Y + MAX_HEIGHT;
         //}
         camPos.Y = objPos.Y + 4f;
+        #endregion movement
 
         GL.Uniform2(_viewportUniformLocation, viewport);
         GL.Uniform1(_timeUniformLocation, elapsedTime);
         GL.Uniform3(_camPosUniformLocation, camPos);
         GL.Uniform3(_objPosUniformLocation, objPos);
+    }
+
+    private static void SendToBuffer<T>(T[] arr, string blockName, int bindingInd, int handle) where T : struct {
+        int uboHandle = GL.GenBuffer();
+        GL.BindBuffer(BufferTarget.UniformBuffer, uboHandle);
+        GL.BufferData(BufferTarget.UniformBuffer, arr.Length * Marshal.SizeOf<T>(), arr, BufferUsageHint.StaticDraw);
+
+        GL.BindBufferBase(BufferRangeTarget.UniformBuffer, bindingInd, uboHandle);
+
+        int blockIndex = GL.GetUniformBlockIndex(handle, blockName);
+        GL.UniformBlockBinding(handle, blockIndex, bindingInd);
     }
 
     ~Raymarcher() {
