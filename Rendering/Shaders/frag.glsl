@@ -1,10 +1,26 @@
-#version 410
+#version 420
 
 uniform float uTime;
 uniform vec3 uCamPos;
 uniform vec3 uObjPos;
 
 in vec2 iResolution;
+
+struct sphere {
+    vec3 c;
+    float r;
+};
+layout(std140, binding = 0) uniform SpheresBlock {
+    sphere iSpheres[2];
+};
+
+struct cube {
+    vec3 c;
+    vec3 s;
+};
+layout(std140, binding = 1) uniform CubesBlock {
+    cube iCubes[2];
+};
 
 out vec4 fragColor;
 
@@ -76,20 +92,15 @@ vec4 sdfScene(vec3 pos) {
 
     vec4 res = vec4(vec3(-0.5), sdfPlane(pos, 10));
     
-    vec3 shapePos = vec3(4.0, -2.0, 8.0);
-    vec4 shapeA = vec4(vec3(0.9, 0.0, 0.1), sdfBox(pos-shapePos, vec3(1.5)));
-    vec4 shapeB = vec4(vec3(0.1, 0.1, 0.9), sdfSphere(pos-shapePos, 1.5));
+    vec4 shapeA = vec4(vec3(0.9, 0.0, 0.1), sdfBox(pos-iCubes[0].c, iCubes[0].s));
+    vec4 shapeB = vec4(vec3(0.1, 0.1, 0.9), sdfSphere(pos-iSpheres[0].c, iSpheres[0].r));
     res = opU(res, mix(shapeA, shapeB, clamp(st*1.5, -1.0, 1.0)*0.5+0.5));
     
     res = opBlend(res, vec4(vec3(0.2, 0.9, 0.1), sdfTorus(pos-vec3(st*2.0+1.0, -2.5, 8.0), vec2(2.0, 0.3))));
     
-    shapePos.x += 6.0;
-    shapePos.z -= 3.0;
-    res = opU(res, vec4(vec3(1.0), opS(sdfBox(pos-shapePos, vec3(1.0)), sdfSphere(pos-shapePos, st*0.28+1.3))));
+    res = opU(res, vec4(vec3(1.0), opS(sdfBox(pos-iCubes[1].c, iCubes[1].s), sdfSphere(pos-iSpheres[1].c, st*0.28+1.3))));
     
-    shapePos.y += 4.0;
-    shapePos.z += 4.0;
-    res = opU(res, sdfTower(pos-shapePos, vec3(1.0, 2.0, 3.0)));
+    res = opU(res, sdfTower(pos-vec3(-8.0, -2.0, 4.0), vec3(1.0, 2.0, 3.0)));
 
     res = opU(res, vec4(vec3(0.1, 0.1, 0.1), sdfSphere(pos-uObjPos, 0.1)));
     return res;

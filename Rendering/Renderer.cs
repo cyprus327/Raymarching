@@ -1,6 +1,9 @@
 ﻿using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.Common;
 using OpenTK.Graphics.OpenGL4;
+using System.Numerics;
+using System.Runtime.InteropServices;
+using System;
 
 namespace Raymarching.Rendering;
 
@@ -57,6 +60,19 @@ internal sealed class Renderer : GameWindow {
         GL.BindVertexArray(0);
     }
 
+    private void SendToBuffer<T>(T[] arr, string blockName, int bindingInd, int handle) where T : struct {
+        int bufferSize = arr.Length * Marshal.SizeOf<T>();
+
+        int uboHandle = GL.GenBuffer();
+        GL.BindBuffer(BufferTarget.UniformBuffer, uboHandle);
+        GL.BufferData(BufferTarget.UniformBuffer, bufferSize, arr, BufferUsageHint.StaticDraw);
+
+        GL.BindBufferBase(BufferRangeTarget.UniformBuffer, bindingInd, uboHandle);
+
+        int blockIndex = GL.GetUniformBlockIndex(handle, blockName);
+        GL.UniformBlockBinding(handle, blockIndex, bindingInd);
+    }
+
     protected override void OnLoad() {
         base.OnLoad();
 
@@ -65,6 +81,19 @@ internal sealed class Renderer : GameWindow {
         InitBuffers();
 
         raymarcher = new Raymarcher(this.ClientSize.X, this.ClientSize.Y);
+
+        Sphere[] spheres = {
+            new Sphere() { C = new Vec3(4f, -2f, 8f), R = 1.5f },
+            new Sphere() { C = new Vec3(10f, -2f, 5f), R = 1f },
+        };
+
+        Cube[] cubes = {
+            new Cube() { C = new Vec3(4f, -2f, 8f), S = new Vec3(1.5f, 1.5f, 1.5f) },
+            new Cube() { C = new Vec3(10f, -2f, 5f), S = new Vec3(1f, 1f, 1f) }
+        };
+
+        SendToBuffer(spheres, "SpheresBlock", 0, raymarcher.Handle);
+        SendToBuffer(cubes, "CubesBlock", 1, raymarcher.Handle);
     }
 
     protected override void OnUnload() {
@@ -114,4 +143,31 @@ internal sealed class Renderer : GameWindow {
         string fps = $"FPS: {1 / args.Time:F0}";
         this.Title = $"{fps}";
     }
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct Vec3 {
+    public Vec3(float x, float y, float z) {
+        X = x;
+        Y = y;
+        Z = z;
+    }
+
+    public float X;
+    public float Y;
+    public float Z;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct Sphere {
+    public Vec3 C;
+    public float R;
+}
+
+[StructLayout(LayoutKind.Sequential, Pack = 16)]
+internal struct Cube {
+    public Vec3 C;
+    private float padding1;
+    public Vec3 S;
+    private float padding2;
 }
