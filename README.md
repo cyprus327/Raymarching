@@ -3,16 +3,20 @@ My foray into Ray Marching, mainly inspired by the game Claybook and random thin
 
 ## Screenshots
 
-Anti-Aliasing Enabled
-[![image.png](https://i.postimg.cc/6QRzz2jY/image.png)](https://postimg.cc/XZjwYJ0C)
+Mandelbulb
+[![image.png](https://i.postimg.cc/NjzYwVx5/image.png)](https://postimg.cc/cvwPRF2S)
 
-Anti-Aliasing Disabled
+"Physical" Mandelbulb
+[![image.png](https://i.postimg.cc/RCHdBbcq/image.png)](https://postimg.cc/8sTMd4XV)
+
+Anti-Aliasing Enabled vs. Disabled
+[![image.png](https://i.postimg.cc/6QRzz2jY/image.png)](https://postimg.cc/XZjwYJ0C)
 [![image.png](https://i.postimg.cc/cCcbhgJV/image.png)](https://postimg.cc/n9C2cLBk)
 
-Step Count (brighter red = higher step count)
+Step Count Visualization (brighter red = higher step count)
 [![image.png](https://i.postimg.cc/3JcBTCzt/image.png)](https://postimg.cc/6yCRVRWZ)
 
-Normals
+Normals Visualization
 [![image.png](https://i.postimg.cc/1tm66fLg/image.png)](https://postimg.cc/sBLvCDfy)
 
 Different Color Distance Fog
