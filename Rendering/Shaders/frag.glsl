@@ -1,6 +1,7 @@
 #version 420
 
 uniform float uTime;
+//const float uTime = 9.0;
 uniform vec3 uCamPos;
 uniform vec3 uObjPos;
 
@@ -73,7 +74,7 @@ vec4 opBlend(vec4 d1, vec4 d2) {
     return vec4(m, d);
 }
 
-vec4 sdfTower(vec3 p, vec3 s) {
+float sdfTower(vec3 p, vec3 s) {
     const float W = 0.2;
 
     // make the outer walls by removing the inside of a box
@@ -82,24 +83,65 @@ vec4 sdfTower(vec3 p, vec3 s) {
     // make a door hole by removing a section for the door
     outerWalls = opS(outerWalls, sdfBox(p-vec3(0.0, 0.0, 0.5*W-s.z), vec3(0.5, s.y+0.1, 0.5*W*2.0)));
 
-    vec4 res = vec4(vec3(0.9, 0.2, 0.2), outerWalls);
+    return outerWalls;
+}
 
-    return res;
+vec4 sdfMandelbulb(vec3 p) {
+    const float POWER = 8.0+sin(uTime)*2.5;
+    vec3 z = p;
+    float dr = 1.0, r = 0.0;
+    int iterationCount = 0;
+
+    for (int i = 0; i < 256; i++) {
+        r = length(z);
+        if (r > 50) break;
+
+        // update the distance estimate derivative
+        float theta = acos(z.z / r);
+        float phi = atan(z.y, z.x);
+        dr = pow(r, POWER - 1.0) * POWER * dr + 1.0;
+
+        // perform mandelbulb fractal iteration
+        float zr = pow(r, POWER);
+        theta *= POWER;
+        phi *= POWER;
+
+        z = zr * vec3(sin(theta) * cos(phi), sin(phi) * sin(theta), cos(theta));
+        z += p;
+
+        iterationCount++;
+    }
+
+    float distanceEstimate = 0.5 * log(r) * r / dr;
+
+    float distanceColor = float(iterationCount) + 1.0 - log(log(distanceEstimate + 1.0) / log(2.0)) / log(2.0);
+
+    vec3 finalColor = vec3(
+        0.5 + 0.5 * cos(3.0 + distanceColor * 0.2),
+        0.5 + 0.5 * cos(1.0 + distanceColor * 0.3),
+        0.5 + 0.5 * cos(5.0 + distanceColor * 0.4)
+    );
+
+    return vec4(finalColor, distanceEstimate);
 }
 
 vec4 sdfScene(vec3 pos) {
     vec4 res = vec4(vec3(-0.5), sdfPlane(pos, 10));
     
-    float st = sin(uTime);
+    vec4 m = sdfMandelbulb(pos-vec3(0.5, 1.0, 9.8));
+    res = opU(res, m);//vec4(m.rgb, opS(m.w, sdfBox(pos-vec3(0.5, 1.0, 9.8), vec3(2.0, 0.2, 0.2)))));
+
     vec4 shapeA = vec4(vec3(0.9, 0.0, 0.1), sdfBox(pos-iCubes[0].c, iCubes[0].s));
     vec4 shapeB = vec4(vec3(0.1, 0.1, 0.9), sdfSphere(pos-iSpheres[0].c, iSpheres[0].r));
-    res = opU(res, mix(shapeA, shapeB, clamp(st*1.5, -1.0, 1.0)*0.5+0.5));
+    res = opU(res, mix(shapeA, shapeB, clamp(sin(uTime)*1.5, -1.0, 1.0)*0.5+0.5));
     
-    res = opBlend(res, vec4(vec3(0.2, 0.9, 0.1), sdfTorus(pos-vec3(st*2.0+1.0, -2.5, 8.0), vec2(2.0, 0.3))));
+    res = opBlend(res, vec4(vec3(0.2, 0.9, 0.1), sdfTorus(pos-vec3(cos(uTime*0.5)*2.0+1.0, -2.5, 8.0), vec2(2.0, 0.3))));
     
-    res = opU(res, vec4(vec3(1.0), opS(sdfBox(pos-iCubes[1].c, iCubes[1].s), sdfSphere(pos-iSpheres[1].c, st*0.28+1.3))));
+    res = opU(res, vec4(vec3(0.7, 0.1, 0.2), opS(sdfBox(pos-iCubes[1].c, iCubes[1].s), sdfSphere(pos-iSpheres[1].c, sin(uTime*1.5)*0.28+1.3))));
     
-    res = opU(res, sdfTower(pos-vec3(-8.0, -2.0, 4.0), vec3(1.0, 2.0, 3.0)));
+    float d1 = sdfTower(pos-vec3(-7.0, -6.0, 8.0), vec3(3.0, 4.0, 1.5));
+    float d2 = sdfSphere(pos-vec3(-4.0, -1.2, 7.0), 6.5);
+    res = opU(res, vec4(vec3(0.2, 0.5, 0.8), opS(d1, d2)));
 
     // this doesn't work for some reason
     // for (int i = 0; i < iSpheres.length; i++) {
@@ -123,7 +165,7 @@ vec4 sdfScene(vec3 pos) {
     if (iCubes[6] != emptyCube) res = opBlend(res, vec4(vec3(1.0), sdfBox(pos-iCubes[6].c, iCubes[6].s)));
     if (iCubes[7] != emptyCube) res = opBlend(res, vec4(vec3(1.0), sdfBox(pos-iCubes[7].c, iCubes[7].s)));
     if (iCubes[8] != emptyCube) res = opBlend(res, vec4(vec3(1.0), sdfBox(pos-iCubes[8].c, iCubes[8].s)));
-
+    
     res = opU(res, vec4(vec3(0.1, 0.1, 0.1), sdfSphere(pos-uObjPos, 0.1)));
     return res;
 }
@@ -208,7 +250,7 @@ vec3 render(vec3 rayOrigin, vec3 rayDir) {
             //col = normal*0.5+0.5;
         } else {
             float grid = checkersGradBox(pos.xz*0.2) * 0.03 + 0.1;
-            col = vec3(grid / 5.0, grid, grid / 7.0);
+            col = vec3(grid / 3.0, grid, grid / 4.0);
             
 #if ENABLE_SHADOWS
             float shadow = 0.0;
@@ -222,7 +264,7 @@ vec3 render(vec3 rayOrigin, vec3 rayDir) {
 #endif
         }
 
-        col = applyFog(col, length(rayDir) * info.minDist);
+        //col = applyFog(col, length(rayDir) * info.minDist);
     }
     
     return col;
