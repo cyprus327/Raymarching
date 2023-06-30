@@ -28,8 +28,8 @@ No Floor Grid
 [![image.png](https://i.postimg.cc/L8SzRCNB/image.png)](https://postimg.cc/w7WtQVK7)
 
 ## Resources
-[Inigo Quilez](https://iquilezles.org/)
-[Sebastian Lague](https://github.com/SebLague/Ray-Marching/tree/master)
-[The Art of Code](https://www.youtube.com/@TheArtofCodeIsCool)
-[SimonDev](https://youtu.be/BNZtUB7yhX4)
+[Inigo Quilez](https://iquilezles.org/) |
+[Sebastian Lague](https://github.com/SebLague/Ray-Marching/tree/master) |
+[The Art of Code](https://www.youtube.com/@TheArtofCodeIsCool) |
+[SimonDev](https://youtu.be/BNZtUB7yhX4) |
 [Raymarching Workshop](https://github.com/electricsquare/raymarching-workshop)
