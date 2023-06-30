@@ -149,17 +149,12 @@ internal sealed class Raymarcher : IDisposable {
 
         const float CAM_DIST = 6f;
         camPos = objPos - Vector3.Normalize(objPos - camPos) * CAM_DIST;
-
-        //const float MAX_HEIGHT = 5.5f;
-        //if (MathF.Abs(camPos.Y - objPos.Y) > MAX_HEIGHT) {
-        //    camPos.Y = camPos.Y < objPos.Y ? objPos.Y - MAX_HEIGHT : objPos.Y + MAX_HEIGHT;
-        //}
-        camPos.Y = objPos.Y + 4f;
+        camPos.Y = objPos.Y + 2f;
         #endregion movement
 
         #region interaction
         bool spheresChanged = false, cubesChanged = false;
-        if (keyboardState.IsKeyReleased(Keys.Z)) {
+        if (keyboardState.IsKeyReleased(Keys.Z) && _spheres.Count < 9) {
             _spheres.Add(new Sphere() { C = new Vec3(objPos.X, objPos.Y, objPos.Z), R = 1f });
             spheresChanged = true;
         }
@@ -168,7 +163,7 @@ internal sealed class Raymarcher : IDisposable {
             cubesChanged = true;
         }
 
-        if (keyboardState.IsKeyDown(Keys.Space)) {
+        if (keyboardState.IsKeyDown(Keys.Space) && _cubes.Count < 9) {
             //bool objSelected = false;
             for (int i = 0; i < _spheres.Count; i++) {
                 if (Vector3.DistanceSquared(objPos, new Vector3(_spheres[i].C.X, _spheres[i].C.Y, _spheres[i].C.Z)) <= _spheres[i].R * _spheres[i].R) {
