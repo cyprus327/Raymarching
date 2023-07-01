@@ -1,11 +1,23 @@
 #version 420
 
 uniform float uTime;
-//const float uTime = 9.0;
 uniform vec3 uCamPos;
 uniform vec3 uObjPos;
 
 in vec2 iResolution;
+
+out vec4 fragColor;
+
+#define AA_QUALITY 2
+#define SHOW_STEP_COUNT 0
+#define ENABLE_SHADOWS 1
+#define SHADOW_OPACITY 0.8
+#define FOG_START_DIST 200.0
+
+const vec3 FOG_COLOR = vec3(0.30, 0.36, 0.60);
+const vec3 CAM_TARGET = vec3(7.0, -3.0, 8.0);
+const float MAX_DIST = 100.0;
+const int MAX_ITER = 128;
 
 struct sphere {
     vec3 c;
@@ -23,19 +35,18 @@ layout(std140, binding = 1) uniform CubesBlock {
     cube iCubes[];
 };
 
-out vec4 fragColor;
+struct material {
+    vec3 col;
+};
 
-#define AA_QUALITY 3
-#define SHOW_STEP_COUNT 0
-#define ENABLE_POST_PROCESSING 1
-#define ENABLE_SHADOWS 1
-#define SHADOW_OPACITY 0.8
-#define FOG_START_DIST 200.0
+const material SKYBOX_MAT = material(vec3(-1.0));
+const material FLOOR_MAT = material(vec3(-0.5));
 
-const vec3 FOG_COLOR = vec3(0.30, 0.36, 0.60);
-const vec3 CAM_TARGET = vec3(7.0, -3.0, 8.0);
-const float MAX_DIST = 1.1 * FOG_START_DIST;
-const int MAX_ITER = 128;
+struct hitInfo {
+    float minDist;
+    material mat;
+    int steps;
+};
 
 float sdfSphere(vec3 p, float r) {
     return length(p)-r;
@@ -114,7 +125,7 @@ vec4 sdfMandelbulb(vec3 p) {
 
     float distanceEstimate = 0.5 * log(r) * r / dr;
 
-    float distanceColor = float(iterationCount) + 1.0 - log(log(distanceEstimate + 1.0) / log(2.0)) / log(2.0);
+    float distanceColor = float(iterationCount) + 1.0 - log(log(distanceEstimate + 1.0) / 0.3010299) / 0.3010299;
 
     vec3 finalColor = vec3(
         0.5 + 0.5 * cos(3.0 + distanceColor * 0.2),
@@ -128,8 +139,8 @@ vec4 sdfMandelbulb(vec3 p) {
 vec4 sdfScene(vec3 pos) {
     vec4 res = vec4(vec3(-0.5), sdfPlane(pos, 10));
     
-    vec4 m = sdfMandelbulb(pos-vec3(0.5, 1.0, 9.8));
-    res = opU(res, m);//vec4(m.rgb, opS(m.w, sdfBox(pos-vec3(0.5, 1.0, 9.8), vec3(2.0, 0.2, 0.2)))));
+    //vec4 m = sdfMandelbulb(pos-vec3(0.5, 1.0, 9.8));
+    //res = opU(res, m);
 
     vec4 shapeA = vec4(vec3(0.9, 0.0, 0.1), sdfBox(pos-iCubes[0].c, iCubes[0].s));
     vec4 shapeB = vec4(vec3(0.1, 0.1, 0.9), sdfSphere(pos-iSpheres[0].c, iSpheres[0].r));
@@ -166,7 +177,7 @@ vec4 sdfScene(vec3 pos) {
     if (iCubes[7] != emptyCube) res = opBlend(res, vec4(vec3(1.0), sdfBox(pos-iCubes[7].c, iCubes[7].s)));
     if (iCubes[8] != emptyCube) res = opBlend(res, vec4(vec3(1.0), sdfBox(pos-iCubes[8].c, iCubes[8].s)));
     
-    res = opU(res, vec4(vec3(0.1, 0.1, 0.1), sdfSphere(pos-uObjPos, 0.1)));
+    //res = opU(res, vec4(vec3(0.1, 0.1, 0.1), sdfSphere(pos-uObjPos, 0.1)));
     return res;
 }
 
@@ -179,17 +190,11 @@ vec3 calcNormal(vec3 pos) {
         sdfScene(pos + e.yyx).w) - c);
 }
 
-struct hitInfo {
-    float minDist;
-    vec3 mat;
-    int steps;
-};
-
 hitInfo castRay(vec3 rayOrigin, vec3 rayDir) {
     float t = 0.0;
     
     hitInfo info;
-    info.mat = vec3(-1.0);
+    info.mat.col = vec3(-1.0);
     
     for (info.steps = 0; info.steps < MAX_ITER; info.steps++) {
         vec4 res = sdfScene(rayOrigin + rayDir * t);
@@ -200,12 +205,12 @@ hitInfo castRay(vec3 rayOrigin, vec3 rayDir) {
         }
         
         if (res.w > MAX_DIST) {
-            info.mat = vec3(-1.0);
+            info.mat.col = vec3(-1.0);
             info.minDist = -1.0;
             break;
         }
         
-        info.mat = res.rgb;
+        info.mat.col = res.rgb;
         t += res.w;
     }
     
@@ -225,6 +230,23 @@ vec3 applyFog(vec3 rgb, float dist) {
     return mix(rgb, FOG_COLOR, fogAmount);
 }
 
+// athibaul's algorithm https://www.shadertoy.com/view/tlXBRl
+float calcObstruction(vec3 pos, vec3 lpos, float lrad) {
+    vec3 toLight = normalize(lpos-pos);
+    float distToLight = length(lpos-pos);
+    float d, t = lrad * 0.1;
+    float obstruction = 0.0;
+    for(int j = 0; j < 128; j++) {
+        d = sdfScene(pos + t * toLight).w;
+        obstruction = max(0.5 + -d * distToLight / (2.0 * lrad * t), obstruction);
+        if(obstruction >= 1.) break;
+        
+        t += max(d, lrad * t / distToLight);
+        if(t >= distToLight) break;
+    }
+    return clamp(obstruction, 0.,1.);
+}
+
 vec3 render(vec3 rayOrigin, vec3 rayDir) {
     vec3 col = FOG_COLOR - rayDir.y / 2.0;
     hitInfo info = castRay(rayOrigin, rayDir);
@@ -235,34 +257,37 @@ vec3 render(vec3 rayOrigin, vec3 rayDir) {
     
     vec3 pos = rayOrigin + rayDir * info.minDist;
     vec3 normal = calcNormal(pos);
-    vec3 light = normalize(vec3(sin(uTime / 3.0), 0.9, -0.5));
 
-    if (info.mat != vec3(-1.0)) {        
-        if (info.mat != vec3(-0.5)) {            
-            col = info.mat;
-			
-            float NoL = max(dot(normal, light), 0.0);
-            vec3 LDirectional = vec3(1.25, 1.2, 0.8) * NoL;
-            vec3 LAmbient = FOG_COLOR / 3.5;
-            vec3 diffuse = col * (LDirectional + LAmbient);
-        	col = diffuse;
-            
+    if (info.mat != SKYBOX_MAT) {        
+        if (info.mat != FLOOR_MAT) {            
+            col = info.mat.col;
             //col = normal*0.5+0.5;
         } else {
             float grid = checkersGradBox(pos.xz*0.2) * 0.03 + 0.1;
             col = vec3(grid / 3.0, grid, grid / 4.0);
-            
-#if ENABLE_SHADOWS
-            float shadow = 0.0;
-            vec3 shadowRayOrigin = pos + normal * 0.01;
-            if (castRay(shadowRayOrigin, light).mat != vec3(-1.0)) {
-                shadow += 1.0;
-            }
-            
-    		vec3 cshadow = pow(vec3(shadow), vec3(1.0, 1.2, 1.5));
-            col = mix(col, col*cshadow*(1.0-SHADOW_OPACITY), shadow);
-#endif
         }
+
+#if ENABLE_SHADOWS
+        // hard shadows
+//        vec3 light = normalize(vec3(sin(uTime / 3.0), 0.9, -0.5));
+//        vec3 shadowRayOrigin = pos + normal * 0.01;
+//        float shadow = castRay(shadowRayOrigin, light).mat != SKYBOX_MAT ? 1.0 : 0.0;
+//        vec3 cshadow = pow(vec3(shadow), vec3(1.0, 1.2, 1.5));
+//        col = mix(col, col*cshadow*(1.0-SHADOW_OPACITY), shadow);
+
+        // soft shadows
+        const vec3 lpos = vec3(8.0, 6.0, 1.0);//vec3(4.*cos(uTime*0.5), 4.*sin(uTime*0.5), 4.*(1.-0.5*cos(uTime*2.)));
+        const float lightRadius = 0.22;
+        const float lightStrength = 120.0;//pow(length(lpos), 2.0);
+        float obstruction = calcObstruction(pos, lpos, lightRadius);
+        vec3 toLight = normalize(lpos-pos);
+        float distToLight = length(lpos-pos);
+        float diffuse = max(dot(normal, toLight), 0.0) / (distToLight * distToLight) * lightStrength;
+
+        float level = diffuse * (1.0 - obstruction);
+        col *= level;
+        col = 1.0 - exp(-2.0 * col);
+#endif
 
         //col = applyFog(col, length(rayDir) * info.minDist);
     }
@@ -304,8 +329,6 @@ void main() {
     fragColor = getSceneCol(gl_FragCoord.xy);
 #endif
     
-    
-#if ENABLE_POST_PROCESSING
     vec2 screenCoord = gl_FragCoord.xy / iResolution.xy;
 
     if (screenCoord == vec2(0.5)) {
@@ -321,7 +344,6 @@ void main() {
     // contrast
     float constrast = 0.3;
     fragColor = mix(fragColor, smoothstep(0.0, 1.0, fragColor), constrast);    
-#endif
     
     fragColor = pow(fragColor, vec4(0.4545));
 }
