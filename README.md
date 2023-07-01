@@ -4,32 +4,24 @@ My foray into Ray Marching, mainly inspired by the game Claybook and random thin
 ## Screenshots
 
 Mandelbulb
-[![image.png](https://i.postimg.cc/NjzYwVx5/image.png)](https://postimg.cc/cvwPRF2S)
+[![Mandelbulb](https://i.postimg.cc/NjzYwVx5/image.png)](https://postimg.cc/cvwPRF2S)
 
 "Physical" Mandelbulb
-[![image.png](https://i.postimg.cc/RCHdBbcq/image.png)](https://postimg.cc/8sTMd4XV)
+[![Physical Mandelbulb](https://i.postimg.cc/RCHdBbcq/image.png)](https://postimg.cc/8sTMd4XV)
 
 Anti-Aliasing Enabled vs. Disabled
-[![image.png](https://i.postimg.cc/6QRzz2jY/image.png)](https://postimg.cc/XZjwYJ0C)
-[![image.png](https://i.postimg.cc/cCcbhgJV/image.png)](https://postimg.cc/n9C2cLBk)
+[![AA Enabled](https://i.postimg.cc/6QRzz2jY/image.png)](https://postimg.cc/XZjwYJ0C)
+[![AA Disabled](https://i.postimg.cc/cCcbhgJV/image.png)](https://postimg.cc/n9C2cLBk)
 
 Step Count Visualization (brighter red = higher step count)
-[![image.png](https://i.postimg.cc/3JcBTCzt/image.png)](https://postimg.cc/6yCRVRWZ)
+[![Step Count Visualization](https://i.postimg.cc/3JcBTCzt/image.png)](https://postimg.cc/6yCRVRWZ)
 
 Normals Visualization
-[![image.png](https://i.postimg.cc/1tm66fLg/image.png)](https://postimg.cc/sBLvCDfy)
+[![Normals Visualization](https://i.postimg.cc/1tm66fLg/image.png)](https://postimg.cc/sBLvCDfy)
 
-Different Color Distance Fog
-[![image.png](https://i.postimg.cc/KjVgdQ4L/image.png)](https://postimg.cc/SY6s966N)
-
-Closer/Denser Distance Fog
-[![image.png](https://i.postimg.cc/sgCM7MWV/image.png)](https://postimg.cc/ykn6zYn5)
-
-No Distance Fog
-[![image.png](https://i.postimg.cc/TPC1zQ4w/image.png)](https://postimg.cc/yJ379hB4)
-
-No Floor Grid
-[![image.png](https://i.postimg.cc/L8SzRCNB/image.png)](https://postimg.cc/w7WtQVK7)
+Soft Shadows (still has some artifacts)
+[![Soft Shadows 1](https://i.postimg.cc/C1zQPHKy/image.png)](https://postimg.cc/S2bdj98V)
+[![Soft Shadows 2](https://i.postimg.cc/3rP2DC5y/image.png)](https://postimg.cc/grHxCh0d)
 
 ## Resources
 [Inigo Quilez](https://iquilezles.org/) |
